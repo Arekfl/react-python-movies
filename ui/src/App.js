@@ -8,9 +8,16 @@ function App() {
     const [movies, setMovies] = useState([]);
     const [addingMovie, setAddingMovie] = useState(false);
 
-    function handleAddMovie(movie) {
+    async function handleAddMovie(movie) {
+    const response = await fetch('/movies', {
+        method: 'POST',
+        body: JSON.stringify(movie),
+        headers: { 'Content-Type': 'application/json' }
+    });
+    if (response.ok) {
         setMovies([...movies, movie]);
         setAddingMovie(false);
+    }
     }
 
     return (
