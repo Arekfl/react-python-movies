@@ -77,6 +77,13 @@ function App() {
                     movie.id === movieId ? { ...movie, ...updatedData } : movie
                 );
                 setMovies(updatedMovies);
+                
+                // Aktualizuj również displayedMovies aby zmiany były widoczne natychmiast
+                const updatedDisplayedMovies = displayedMovies.map(movie => 
+                    movie.id === movieId ? { ...movie, ...updatedData } : movie
+                );
+                setDisplayedMovies(updatedDisplayedMovies);
+                
                 toast.success('Film został zaktualizowany pomyślnie!');
             } else {
                 const errorData = await response.json().catch(() => null);
