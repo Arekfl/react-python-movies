@@ -59,6 +59,32 @@ function App() {
     }
     }
 
+    async function handleUpdateMovie(movieId, updatedData) {
+        setIsLoading(true);
+        try {
+            const response = await fetch(`/movies/${movieId}`, {
+                method: 'PUT',
+                body: JSON.stringify(updatedData),
+                headers: { 'Content-Type': 'application/json' }
+            });
+            if (response.ok) {
+                const updatedMovies = movies.map(movie => 
+                    movie.id === movieId ? { ...movie, ...updatedData } : movie
+                );
+                setMovies(updatedMovies);
+                toast.success('Film został zaktualizowany pomyślnie!');
+            } else {
+                const errorData = await response.json().catch(() => null);
+                const errorMessage = errorData?.detail || `${response.status} ${response.statusText}`;
+                toast.error(`Błąd przy aktualizacji filmu: ${errorMessage}`);
+            }
+        } catch (error) {
+            toast.error(`Błąd połączenia z serwerem: ${error.message}`);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
     function handleDeleteMovie(movie) {
         const ConfirmToast = ({ closeToast }) => (
             <div>
@@ -133,6 +159,7 @@ function App() {
                 ? <p>No movies yet. Maybe add something?</p>
                 : <MoviesList movies={movies}
                               onDeleteMovie={handleDeleteMovie}
+                              onUpdateMovie={handleUpdateMovie}
                 />}
             {addingMovie
                 ? <MovieForm onMovieSubmit={handleAddMovie}

@@ -15,7 +15,11 @@ export default function MoviesList(props) {
         <ul className="movies-list">
             {transitions((style, movie) => (
                 <animated.li key={movie.id || movie.title} style={style}>
-                    <MovieListItem movie={movie} onDelete={() => props.onDeleteMovie(movie)}/>
+                    <MovieListItem 
+                        movie={movie} 
+                        onDelete={() => props.onDeleteMovie(movie)}
+                        onUpdate={props.onUpdateMovie}
+                    />
                 </animated.li>
             ))}
         </ul>
