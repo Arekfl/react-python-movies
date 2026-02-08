@@ -5,13 +5,17 @@ import MovieForm from "./MovieForm";
 import MoviesList from "./MoviesList";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { useSpring, animated } from '@react-spring/web';
 
 function App() {
     const [movies, setMovies] = useState([]);
     const [addingMovie, setAddingMovie] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
     const fetchMovies = async () => {
+        setIsLoading(true);
         try {
             const response = await fetch(`/movies`);
             if (response.ok) {
@@ -22,12 +26,15 @@ function App() {
             }
         } catch (error) {
             toast.error(`Błąd połączenia z serwerem: ${error.message}`);
+        } finally {
+            setIsLoading(false);
         }
     };
     fetchMovies();
 }, []);
 
     async function handleAddMovie(movie) {
+    setIsLoading(true);
     try {
         const response = await fetch('/movies', {
             method: 'POST',
@@ -47,6 +54,8 @@ function App() {
         }
     } catch (error) {
         toast.error(`Błąd połączenia z serwerem: ${error.message}`);
+    } finally {
+        setIsLoading(false);
     }
     }
 
@@ -61,6 +70,7 @@ function App() {
                         style={{ padding: '5px 15px', cursor: 'pointer' }}
                         onClick={async () => {
                             closeToast();
+                            setIsDeleting(true);
                             try {
                                 const response = await fetch(`/movies/${movie.id}`, {
                                     method: 'DELETE',
@@ -74,6 +84,8 @@ function App() {
                                 }
                             } catch (error) {
                                 toast.error(`Błąd połączenia z serwerem: ${error.message}`);
+                            } finally {
+                                setIsDeleting(false);
                             }
                         }}
                     >
@@ -98,9 +110,25 @@ function App() {
         });
     }
 
+    const buttonSpring = useSpring({
+        from: { scale: 0.9, opacity: 0 },
+        to: { scale: 1, opacity: 1 },
+        config: { tension: 300, friction: 20 }
+    });
+
     return (
         <div className="container">
             <h1>My favourite movies to watch</h1>
+            {(isLoading || isDeleting) && (
+                <div className="loader-overlay">
+                    <div className="lds-ring">
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                    </div>
+                </div>
+            )}
             {movies.length === 0
                 ? <p>No movies yet. Maybe add something?</p>
                 : <MoviesList movies={movies}
@@ -110,7 +138,12 @@ function App() {
                 ? <MovieForm onMovieSubmit={handleAddMovie}
                              buttonLabel="Add a movie"
                 />
-                : <button onClick={() => setAddingMovie(true)}>Add a movie</button>}
+                : <animated.button 
+                    style={buttonSpring}
+                    onClick={() => setAddingMovie(true)}
+                  >
+                    Add a movie
+                  </animated.button>}
             <ToastContainer
                 position="bottom-right"
                 autoClose={3000}
