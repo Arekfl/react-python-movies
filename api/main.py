@@ -5,8 +5,27 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Any, Optional
 import sqlite3
-import chromadb # type: ignore
-from chromadb.utils import embedding_functions # type: ignore
+import os
+import logging
+
+# Konfiguracja logowania
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Sprawdź czy ChromaDB jest włączone (wyłącz na render.com jeśli powoduje problemy)
+ENABLE_CHROMADB = os.getenv("ENABLE_CHROMADB", "true").lower() == "true"
+
+if ENABLE_CHROMADB:
+    try:
+        import chromadb # type: ignore
+        from chromadb.utils import embedding_functions # type: ignore
+        logger.info("ChromaDB enabled")
+    except Exception as e:
+        logger.warning(f"ChromaDB import failed: {e}. Semantic search will be disabled.")
+        ENABLE_CHROMADB = False
+else:
+    chromadb = None  # type: ignore
+    embedding_functions = None  # type: ignore
 
 
 class Movie(BaseModel):
@@ -33,16 +52,24 @@ collection = None
 
 def get_chroma_collection():
     """Lazy initialization of ChromaDB collection"""
+    if not ENABLE_CHROMADB:
+        return None
+    
     global chroma_client, collection
     if collection is None:
-        chroma_client = chromadb.PersistentClient(path="./chroma_db")
-        sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name="all-MiniLM-L6-v2"
-        )
-        collection = chroma_client.get_or_create_collection(
-            name="movies",
-            embedding_function=sentence_transformer_ef
-        )
+        try:
+            chroma_client = chromadb.PersistentClient(path="./chroma_db")  # type: ignore
+            sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(  # type: ignore
+                model_name="all-MiniLM-L6-v2"
+            )
+            collection = chroma_client.get_or_create_collection(
+                name="movies",
+                embedding_function=sentence_transformer_ef
+            )
+            logger.info("ChromaDB collection initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize ChromaDB: {e}")
+            return None
     return collection
 
 def get_movie_text(movie_dict):
@@ -57,6 +84,9 @@ def get_movie_text(movie_dict):
 
 def index_movie(movie_id, movie_dict):
     """Dodaje lub aktualizuje film w indeksie wektorowym"""
+    if not ENABLE_CHROMADB:
+        return
+    
     try:
         # Upewnij się, że wszystkie wartości są stringami (ChromaDB nie akceptuje None)
         clean_dict = {
@@ -69,21 +99,26 @@ def index_movie(movie_id, movie_dict):
         }
         text = get_movie_text(clean_dict)
         coll = get_chroma_collection()
-        coll.upsert(
-            ids=[str(movie_id)],
-            documents=[text],
-            metadatas=[clean_dict]
-        )
+        if coll:
+            coll.upsert(
+                ids=[str(movie_id)],
+                documents=[text],
+                metadatas=[clean_dict]
+            )
     except Exception as e:
-        print(f"Error indexing movie {movie_id}: {e}")
+        logger.error(f"Error indexing movie {movie_id}: {e}")
 
 def delete_from_index(movie_id):
     """Usuwa film z indeksu wektorowego"""
+    if not ENABLE_CHROMADB:
+        return
+    
     try:
         coll = get_chroma_collection()
-        coll.delete(ids=[str(movie_id)])
+        if coll:
+            coll.delete(ids=[str(movie_id)])
     except Exception as e:
-        print(f"Error deleting movie {movie_id} from index: {e}")
+        logger.error(f"Error deleting movie {movie_id} from index: {e}")
 
 app.mount("/static", StaticFiles(directory="../ui/build/static", check_dir=False), name="static")
 
@@ -92,6 +127,11 @@ app.mount("/static", StaticFiles(directory="../ui/build/static", check_dir=False
 def health_check():
     """Endpoint dla health checków render.com"""
     return {"status": "ok"}
+
+@app.get("/manifest.json")
+def serve_manifest():
+    """Serwowanie manifest.json dla PWA"""
+    return FileResponse("../ui/build/manifest.json")
 
 @app.get("/")
 @app.head("/")
@@ -120,8 +160,13 @@ def get_movies():  # put application's code here
 @app.get('/movies/search')
 def search_movies(q: str = Query(..., description="Query for semantic search")):
     """Wyszukiwanie semantyczne filmów używając ChromaDB"""
+    if not ENABLE_CHROMADB:
+        return {"error": "Semantic search is disabled", "results": []}
+    
     try:
         coll = get_chroma_collection()
+        if not coll:
+            return {"error": "ChromaDB not available", "results": []}
         results = coll.query(
             query_texts=[q],
             n_results=10
