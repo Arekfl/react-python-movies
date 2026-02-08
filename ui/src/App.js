@@ -3,15 +3,18 @@ import {useEffect, useState} from "react";
 import "milligram";
 import MovieForm from "./MovieForm";
 import MoviesList from "./MoviesList";
+import MovieSearch from "./MovieSearch";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useSpring, animated } from '@react-spring/web';
 
 function App() {
     const [movies, setMovies] = useState([]);
+    const [displayedMovies, setDisplayedMovies] = useState([]);
     const [addingMovie, setAddingMovie] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isSearchMode, setIsSearchMode] = useState(false);
 
     useEffect(() => {
     const fetchMovies = async () => {
@@ -21,6 +24,7 @@ function App() {
             if (response.ok) {
                 const movies = await response.json();
                 setMovies(movies);
+                setDisplayedMovies(movies);
             } else {
                 toast.error(`Błąd przy pobieraniu filmów: ${response.status} ${response.statusText}`);
             }
@@ -45,6 +49,7 @@ function App() {
             const newMovie = await response.json();
             movie.id = newMovie.id;
             setMovies([...movies, movie]);
+            setDisplayedMovies([...movies, movie]);
             setAddingMovie(false);
             toast.success('Film został dodany pomyślnie!');
         } else {
@@ -104,6 +109,7 @@ function App() {
                                 if (response.ok) {
                                     const nextMovies = movies.filter(m => m !== movie);
                                     setMovies(nextMovies);
+                                    setDisplayedMovies(nextMovies);
                                     toast.success('Film został usunięty pomyślnie!');
                                 } else {
                                     toast.error(`Błąd przy usuwaniu filmu: ${response.status} ${response.statusText}`);
@@ -136,6 +142,16 @@ function App() {
         });
     }
 
+    function handleSearchResults(results) {
+        setDisplayedMovies(results);
+        setIsSearchMode(true);
+    }
+
+    function handleClearSearch() {
+        setDisplayedMovies(movies);
+        setIsSearchMode(false);
+    }
+
     const buttonSpring = useSpring({
         from: { scale: 0.9, opacity: 0 },
         to: { scale: 1, opacity: 1 },
@@ -145,6 +161,13 @@ function App() {
     return (
         <div className="container">
             <h1>My favourite movies to watch</h1>
+            
+            <MovieSearch 
+                onSearchResults={handleSearchResults}
+                onClearSearch={handleClearSearch}
+                isSearchMode={isSearchMode}
+            />
+            
             {(isLoading || isDeleting) && (
                 <div className="loader-overlay">
                     <div className="lds-ring">
@@ -155,9 +178,9 @@ function App() {
                     </div>
                 </div>
             )}
-            {movies.length === 0
+            {displayedMovies.length === 0
                 ? <p>No movies yet. Maybe add something?</p>
-                : <MoviesList movies={movies}
+                : <MoviesList movies={displayedMovies}
                               onDeleteMovie={handleDeleteMovie}
                               onUpdateMovie={handleUpdateMovie}
                 />}
