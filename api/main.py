@@ -12,8 +12,9 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Sprawdź czy ChromaDB jest włączone (wyłącz na render.com jeśli powoduje problemy)
-ENABLE_CHROMADB = os.getenv("ENABLE_CHROMADB", "true").lower() == "true"
+# Sprawdź czy ChromaDB jest włączone (WYŁĄCZONE domyślnie - za dużo pamięci na render.com)
+# Lokalnie możesz włączyć ustawiając ENABLE_CHROMADB=true w zmiennych środowiskowych
+ENABLE_CHROMADB = os.getenv("ENABLE_CHROMADB", "false").lower() == "true"
 
 if ENABLE_CHROMADB:
     try:
@@ -26,6 +27,7 @@ if ENABLE_CHROMADB:
 else:
     chromadb = None  # type: ignore
     embedding_functions = None  # type: ignore
+    logger.info("ChromaDB disabled - set ENABLE_CHROMADB=true to enable semantic search")
 
 
 class Movie(BaseModel):

@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 export default function MovieSearch(props) {
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
-    const [searchMode, setSearchMode] = useState('semantic'); // 'semantic' lub 'text'
+    const [searchMode, setSearchMode] = useState('text'); // Domyślnie tekstowe, semantyczne wyłączone (za dużo pamięci na render.com)
 
     const searchSpring = useSpring({
         from: { opacity: 0, transform: 'translateY(-10px)' },
@@ -21,11 +21,16 @@ export default function MovieSearch(props) {
             return;
         }
 
+        // Blokada wyszukiwania semantycznego
+        if (searchMode === 'semantic') {
+            toast.warning('🔒 Wyszukiwanie semantyczne niedostępne w wersji free (wymaga >512MB RAM)');
+            return;
+        }
+
         setIsSearching(true);
         
         try {
-            const endpoint = searchMode === 'semantic' ? '/movies/search' : '/movies/search-text';
-            const response = await fetch(`${endpoint}?q=${encodeURIComponent(searchQuery)}`);
+            const response = await fetch(`/movies/search-text?q=${encodeURIComponent(searchQuery)}`);
             
             if (response.ok) {
                 const results = await response.json();
@@ -33,8 +38,7 @@ export default function MovieSearch(props) {
                 if (results.length === 0) {
                     toast.info('Nie znaleziono filmów pasujących do zapytania');
                 } else {
-                    const modeText = searchMode === 'semantic' ? 'semantycznie' : 'tekstowo';
-                    toast.success(`Znaleziono ${results.length} filmów (${modeText})`);
+                    toast.success(`Znaleziono ${results.length} filmów`);
                     props.onSearchResults(results);
                 }
             } else {
@@ -56,7 +60,7 @@ export default function MovieSearch(props) {
         <animated.div style={searchSpring} className="search-container">
             <form onSubmit={handleSearch} style={{ marginBottom: '2rem' }}>
                 <div style={{ marginBottom: '1rem', display: 'flex', gap: '15px', alignItems: 'center' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: '#fff' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: '#fff', opacity: 0.5 }}>
                         <input 
                             type="radio" 
                             value="semantic"
@@ -64,7 +68,7 @@ export default function MovieSearch(props) {
                             onChange={(e) => setSearchMode(e.target.value)}
                             style={{ marginRight: '5px' }}
                         />
-                        🧠 Wyszukiwanie semantyczne
+                        🧠 Wyszukiwanie semantyczne 🔒
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: '#fff' }}>
                         <input 
@@ -84,17 +88,17 @@ export default function MovieSearch(props) {
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder={
                             searchMode === 'semantic' 
-                                ? "Wyszukaj semantycznie (np. 'akcja z helikopterami', 'dramat o rodzinie')..." 
+                                ? "🔒 Nie dostępne w wersji free" 
                                 : "Wyszukaj po tytule, reżyserze, aktorach lub opisie..."
                         }
                         style={{ flex: 1 }}
-                        disabled={isSearching}
+                        disabled={isSearching || searchMode === 'semantic'}
                     />
                     <button 
                         type="submit" 
-                        disabled={isSearching}
+                        disabled={isSearching || searchMode === 'semantic'}
                     >
-                        {isSearching ? 'Szukam...' : 'Szukaj 🔍'}
+                        {isSearching ? 'Szukam...' : (searchMode === 'semantic' ? '🔒 Zablokowane' : 'Szukaj 🔍')}
                     </button>
                     {props.isSearchMode && (
                         <button 
@@ -108,8 +112,8 @@ export default function MovieSearch(props) {
                 </div>
                 <p style={{ fontSize: '0.85em', color: '#fff', marginTop: '5px', marginBottom: 0 }}>
                     {searchMode === 'semantic' 
-                        ? '💡 Wyszukiwarka semantyczna - znajdzie filmy na podstawie znaczenia, nie tylko słów kluczowych'
-                        : '💡 Wyszukiwanie tekstowe - dokładne dopasowanie słów w tytule, reżyserze, aktorach i opisie'
+                        ? '🔒 Wyszukiwanie semantyczne niedostępne w wersji free (wymaga >512MB RAM na render.com)'
+                        : '💡 Wyszukiwanie tekstowe - dopasowanie słów w tytule, reżyserze, aktorach i opisie'
                     }
                 </p>
             </form>

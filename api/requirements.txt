@@ -1,4 +1,6 @@
 fastapi
 uvicorn[standard]
-chromadb
-sentence-transformers
+# ChromaDB i sentence-transformers wyłączone - za dużo pamięci dla render.com (>512MB)
+# Lokalnie odkomentuj jeśli chcesz używać wyszukiwania semantycznego (ustaw ENABLE_CHROMADB=true)
+# chromadb
+# sentence-transformers
