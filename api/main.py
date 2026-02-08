@@ -1,11 +1,12 @@
 from fastapi import FastAPI, Body, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Any, Optional
 import sqlite3
-import chromadb
-from chromadb.utils import embedding_functions
+import chromadb # type: ignore
+from chromadb.utils import embedding_functions # type: ignore
 
 
 class Movie(BaseModel):
@@ -16,6 +17,15 @@ class Movie(BaseModel):
     description: str = ""
 
 app = FastAPI()
+
+# Konfiguracja CORS dla render.com
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # W produkcji ustaw konkretną domenę
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Lazy initialization of ChromaDB - will be initialized on first use
 chroma_client = None
@@ -77,7 +87,14 @@ def delete_from_index(movie_id):
 
 app.mount("/static", StaticFiles(directory="../ui/build/static", check_dir=False), name="static")
 
+@app.get("/health")
+@app.head("/health")
+def health_check():
+    """Endpoint dla health checków render.com"""
+    return {"status": "ok"}
+
 @app.get("/")
+@app.head("/")
 def serve_react_app():
    return FileResponse("../ui/build/index.html")
 

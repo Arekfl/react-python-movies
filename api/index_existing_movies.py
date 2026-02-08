@@ -3,8 +3,8 @@ Skrypt do ponownego indeksowania istniejących filmów w ChromaDB
 Uruchom to raz po dodaniu funkcjonalności wyszukiwania.
 """
 import sqlite3
-import chromadb
-from chromadb.utils import embedding_functions
+import chromadb  # type: ignore
+from chromadb.utils import embedding_functions  # type: ignore
 
 # Initialize ChromaDB
 chroma_client = chromadb.PersistentClient(path="./chroma_db")
